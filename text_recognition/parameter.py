@@ -1,14 +1,14 @@
-CHAR_VECTOR = "0123456789 "
+CHAR_VECTOR = '0123456789 '
 
 letters = [letter for letter in CHAR_VECTOR]
 
-num_classes = len(letters) + 1
+CLASS_NUM = len(letters) + 1
 
-img_w, img_h = 128, 64
+IMG_W, IMG_H = 128, 64
 
 # Network parameters
-batch_size = 32
-val_batch_size = 16
+TRAIN_BATCH_SIZE = 32
+VAL_BATCH_SIZE = 16
 
-downsample_factor = 4
-max_text_len = 2
+DOWNSAMPLE_FACTOR = 4
+MAX_TEXT_LEN = 2
