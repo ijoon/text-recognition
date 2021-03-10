@@ -65,7 +65,7 @@ def _map_path_to_tf_image(image_path, label, image_size_h_w):
 
 
 def get_tf_dataset_for_images_and_string_labels(image_paths, labels, 
-                                                image_size_h_w):
+                                                image_size_hw):
     image_paths = tf.convert_to_tensor(image_paths, dtype=tf.string)
     labels = tf.convert_to_tensor(labels, dtype=tf.string)
 
@@ -75,7 +75,7 @@ def get_tf_dataset_for_images_and_string_labels(image_paths, labels,
         lambda image_path, label: _map_path_to_tf_image(
             image_path=image_path,
             label=label,
-            image_size_h_w=image_size_h_w),
+            image_size_h_w=image_size_hw),
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     return ds
@@ -162,11 +162,11 @@ def _map_preprocess_data(image, label, augmentation=False, normalization=True):
     return image, label
 
 
-def _map_ctc_loss(images, labels, image_w, downsample_factor, batch_size,
-                  label_length):
+def _map_batch_for_ctc_loss(images, labels, image_w, downsample_factor, 
+                            batch_size, text_length):
 
     input_length = tf.ones((batch_size, 1)) * (image_w//downsample_factor - 2)
-    label_length = tf.ones((batch_size, 1)) * label_length 
+    label_length = tf.ones((batch_size, 1)) * text_length 
 
     input_dict = {
         'inputs': images,
@@ -187,7 +187,7 @@ if __name__ == '__main__':
     4. epoch마다 
         train_ds => augmentation, normalize, shuffle
         valid_ds => normalize
-    5. 배치
+    5. 배치, ctc_loss
     6. prefetch
 
     """
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     total_ds = get_tf_dataset_for_images_and_string_labels(
         image_paths=image_paths, 
         labels=labels, 
-        image_size_h_w=(64,128))
+        image_size_hw=(64,128))
 
     train_ds, valid_ds = split_train_valid_for_tf_dataset(
         total_ds, 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
         .shuffle(train_ds.cardinality().numpy())
         .batch(32)
         .map(
-            lambda images, labels: _map_ctc_loss(
+            lambda images, labels: _map_batch_for_ctc_loss(
                 images=images,
                 labels=labels,
                 image_w=128,
@@ -229,6 +229,24 @@ if __name__ == '__main__':
         .prefetch(tf.data.experimental.AUTOTUNE)
     )
 
-    for input_dict, output_dict in train_ds:
-        print(len(input_dict['inputs']))
-        input()
+    valid_ds = (
+        valid_ds
+        .map(
+            lambda image, label: _map_preprocess_data(
+                image=image, 
+                label=label, 
+                augmentation=False, 
+                normalization=True),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        .shuffle(valid_ds.cardinality().numpy())
+        .batch(32)
+        .map(
+            lambda images, labels: _map_batch_for_ctc_loss(
+                images=images,
+                labels=labels,
+                image_w=128,
+                downsample_factor=4),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        .prefetch(tf.data.experimental.AUTOTUNE)
+    )
+
