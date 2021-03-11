@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Input, Model
+from tensorflow.keras import Input, Model, callbacks
 from tensorflow.keras.layers import (Conv2D, MaxPooling2D, Dense, LSTM,
                                      BatchNormalization, Activation, Reshape,
                                      add, concatenate, Lambda)
@@ -127,12 +127,23 @@ class VGGLSTM:
         model.compile(
             optimizer='Adam', 
             loss={'ctc': lambda y_true, y_pred: y_pred})
+        
+        weight_dir = 'custom_models/weights/VGGLSTM/'
+        checkpoint = callbacks.ModelCheckpoint(
+            filepath= weight_dir + 'VGGLSTM--{epoch:03d}--{val_loss:.3f}.hdf5', 
+            monitor='val_loss', 
+            verbose=1,
+            save_best_only=True,
+            mode='min',
+            save_freq='epoch'
+        )
 
         train_ds, valid_ds = self.batch_generator()
         model.fit(
             x=train_ds,
-            epochs=3,
-            validation_data=valid_ds
+            epochs=1000,
+            validation_data=valid_ds,
+            callbacks=[checkpoint]
         )
     
     def predict(self):
