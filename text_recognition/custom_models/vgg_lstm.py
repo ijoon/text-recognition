@@ -169,7 +169,7 @@ class VGGLSTM:
                     normalization=True),
                 num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .shuffle(train_ds.cardinality().numpy())
-            .batch(self.batch_size)
+            .batch(self.batch_size, drop_remainder=True)
             .map(
                 lambda images, labels: du._map_batch_for_ctc_loss(
                     images=images,
