@@ -16,12 +16,13 @@ from config import cfg
 class VGGLSTM:
     def __init__(self,
                  input_shape_hwc: '(img_w, img_h, channel)',
+                 letters: str,
                  class_num: int,
                  max_text_len: int,
-                 downsample_factor: int,
-                 letters: str,
+                 downsample_factor: int, 
                  dataset_dir: str,
-                 batch_size: int):
+                 batch_size: int = 32,
+                 saved_model_path: str = ''):
 
         self.input_shape_hwc = input_shape_hwc
         self.class_num = class_num
@@ -31,8 +32,15 @@ class VGGLSTM:
 
         self.dataset_dir = dataset_dir
         self.batch_size = batch_size
+        self.saved_model_path = saved_model_path
 
+        self.train_model, self.predict_model = self.build_model()
+        
+        if saved_model_path:
+            self.train_model.load_model(saved_model_path)
+            self.predict_model.load_model(saved_model_path)
 
+    
     @staticmethod
     def ctc_func(args):
         y_pred, labels, input_length, label_length = args
@@ -115,16 +123,18 @@ class VGGLSTM:
         loss_out = Lambda(self.ctc_func, output_shape=(1,), name='ctc')(
             [y_pred, labels, input_length, label_length]) #(None, 1)
 
-        if training:
-            return Model(inputs=[inputs, labels, input_length, label_length], 
-                         outputs=loss_out)
-        else:
-            return Model(inputs=[inputs],
-                         outputs=y_pred)
+        train_model = Model(
+            inputs=[inputs, labels, input_length, label_length], 
+            outputs=loss_out)
+
+        predict_model = Model(
+            inputs=[inputs],
+            outputs=y_pred)
+
+        return train_model, predict_model
 
     def train(self):
-        model = self.build_model(training=True)
-        model.compile(
+        self.train_model.compile(
             optimizer='Adam', 
             loss={'ctc': lambda y_true, y_pred: y_pred})
         
@@ -139,7 +149,7 @@ class VGGLSTM:
         )
 
         train_ds, valid_ds = self.batch_generator()
-        model.fit(
+        self.train_model.fit(
             x=train_ds,
             epochs=1000,
             validation_data=valid_ds,
