@@ -204,5 +204,5 @@ if __name__ == "__main__":
         max_length=5,
         unit_img_size_wh=(32, 64),
         data_size=10000,
-        target_dir='data_generate/result'
+        target_dir='data_generate/generated_imgs'
     )
