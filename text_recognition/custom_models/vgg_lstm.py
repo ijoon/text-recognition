@@ -179,6 +179,12 @@ class VGGLSTM:
     def get_text_result(self, img) -> str:
         pass
     
+    def predict_text_from_image(self, image) -> str:
+        output = self.predict_model.predict(image)
+        output_text = self.decode_label(output)
+
+        return output_text
+
     def batch_generator(self):
         image_paths, labels = du.get_image_paths_and_string_labels(
             directory=self.dataset_dir,
