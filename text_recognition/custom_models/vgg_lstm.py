@@ -37,8 +37,8 @@ class VGGLSTM:
         self.train_model, self.predict_model = self.build_model()
         
         if saved_model_path:
-            self.train_model.load_model(saved_model_path)
-            self.predict_model.load_model(saved_model_path)
+            self.train_model.load_weights(saved_model_path)
+            self.predict_model.load_weights(saved_model_path)
 
     
     @staticmethod
