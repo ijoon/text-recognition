@@ -7,7 +7,13 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow.python.ops.image_ops_impl import image_gradients
 
+
+def text_to_labels(letters, text) -> list:
+    return list(map(lambda x: letters.index(x), text))
+
+
 def get_image_paths_and_string_labels(directory,
+                                      letters,
                                       label_length,
                                       allow_image_formats=('.jpeg', '.jpg')):
 
@@ -48,26 +54,29 @@ def get_image_paths_and_string_labels(directory,
 
                 if not label_length:
                     labels.append(label)
-                labels.append(label.ljust(label_length))
+
+                labels.append(
+                    text_to_labels(letters, label.ljust(label_length)))
                 image_paths.append(os.path.join(path, file_name))
 
     return image_paths, labels
 
 
-def _map_path_to_tf_image(image_path, label, image_size_h_w):
+def _map_path_to_tf_image(image_path, label, image_size_hw):
     # return dtype => tf.uint8
     image = tf.io.decode_image(tf.io.read_file(image_path),
         expand_animations=False)
 
     # return dtype => tf.float32
-    image = tf.image.resize(image, image_size_h_w)
+    image = tf.image.resize(image, image_size_hw)
+
     return image, label
 
 
 def get_tf_dataset_for_images_and_string_labels(image_paths, labels, 
                                                 image_size_hw):
     image_paths = tf.convert_to_tensor(image_paths, dtype=tf.string)
-    labels = tf.convert_to_tensor(labels, dtype=tf.string)
+    labels = tf.convert_to_tensor(labels, dtype=tf.int64)
 
     ds = tf.data.Dataset.from_tensor_slices((image_paths, labels))
 
@@ -75,7 +84,7 @@ def get_tf_dataset_for_images_and_string_labels(image_paths, labels,
         lambda image_path, label: _map_path_to_tf_image(
             image_path=image_path,
             label=label,
-            image_size_h_w=image_size_hw),
+            image_size_hw=image_size_hw),
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     return ds
@@ -112,37 +121,55 @@ def tf_random_condition():
 
 
 def tf_blur_image(x):
-    choice = tf.random.uniform([], 0, 1, dtype=tf.float32)
     def _gfilter(x):
         return tfa.image.gaussian_filter2d(x, [5, 5], 1.0, 'REFLECT', 0)
 
     def _mfilter(x):
         return tfa.image.median_filter2d(x, [5, 5], 'REFLECT', 0)
 
-    return tf.cond(choice > 0.5,
+    return tf.cond(tf_random_condition() > 0.5,
         lambda: _gfilter(x), 
         lambda: _mfilter(x))
 
 
 def tf_random_augment_image(x: tf.Tensor, p=0.2):
 
-    if tf_random_condition() < p:
-        x = tf.image.random_hue(x, 0.1)
+    x = tf.cond(tf_random_condition() < p, 
+        lambda: tf.image.random_hue(x, 0.1), lambda: x)
 
-    if tf_random_condition() < p:
-        x = tf.image.random_brightness(x, 0.1)
+    x = tf.cond(tf_random_condition() < p, 
+        lambda: tf.image.random_brightness(x, 0.1), lambda: x)
 
-    if tf_random_condition() < p:    
-        x = tf.image.random_contrast(x, 0.9, 1.1)
+    x = tf.cond(tf_random_condition() < p, 
+        lambda: tf.image.random_contrast(x, 0.9, 1.1), lambda: x)
 
-    if tf_random_condition() < p:
-        x = tf.image.random_saturation(x, 0.5, 1.5)
+    x = tf.cond(tf_random_condition() < p, 
+        lambda: tf.image.random_saturation(x, 0.5, 1.5), lambda: x)
 
-    if tf_random_condition() < p:
-        x = tf_blur_image(x)
+    x = tf.cond(tf_random_condition() < p, 
+        lambda: tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(x)),
+        lambda: x)
 
-    if tf_random_condition() < 0.1:
-        x = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(x))
+    x = tf.cond(tf_random_condition() < p, 
+        lambda: tf_blur_image(x), lambda: x)
+
+    # if tf_random_condition() < p:
+    #     x = tf.image.random_hue(x, 0.1)
+
+    # if tf_random_condition() < p:
+    #     x = tf.image.random_brightness(x, 0.1)
+
+    # if tf_random_condition() < p:    
+    #     x = tf.image.random_contrast(x, 0.9, 1.1)
+
+    # if tf_random_condition() < p:
+    #     x = tf.image.random_saturation(x, 0.5, 1.5)
+
+    # if tf_random_condition() < p:
+    #     x = tf_blur_image(x)
+
+    # if tf_random_condition() < 0.1:
+    #     x = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(x))
 
     return x
 
@@ -194,8 +221,9 @@ if __name__ == '__main__':
     
     image_paths, labels = get_image_paths_and_string_labels(
         directory='data_generate/results',
-        allow_image_formats=('.jpeg', '.jpg'), 
-        label_length=9)
+        allow_image_formats=('.jpeg', '.jpg'),
+        letters='0123456789-. ',
+        label_length=5)
 
     total_ds = get_tf_dataset_for_images_and_string_labels(
         image_paths=image_paths, 
@@ -224,7 +252,9 @@ if __name__ == '__main__':
                 images=images,
                 labels=labels,
                 image_w=128,
-                downsample_factor=4),
+                downsample_factor=4,
+                batch_size=32,
+                text_length=5),
             num_parallel_calls=tf.data.experimental.AUTOTUNE)
         .prefetch(tf.data.experimental.AUTOTUNE)
     )
@@ -238,15 +268,20 @@ if __name__ == '__main__':
                 augmentation=False, 
                 normalization=True),
             num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        .shuffle(valid_ds.cardinality().numpy())
         .batch(32)
         .map(
             lambda images, labels: _map_batch_for_ctc_loss(
                 images=images,
                 labels=labels,
                 image_w=128,
-                downsample_factor=4),
+                downsample_factor=4,
+                batch_size=32,
+                text_length=5),
             num_parallel_calls=tf.data.experimental.AUTOTUNE)
         .prefetch(tf.data.experimental.AUTOTUNE)
     )
 
+    for input_dict, output_dict in train_ds:
+        print(input_dict['inputs'][0].shape)
+        input()
+        
