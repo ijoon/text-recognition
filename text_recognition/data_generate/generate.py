@@ -176,7 +176,7 @@ def generate_multi_digit_imgs(base_data_dir,
             unit_size=unit_img_size_wh,
             min_length=seq_length)
 
-        seq_img = shear_img_randomly(seq_img)
+        # seq_img = shear_img_randomly(seq_img)
                         
         target_label_dir= f'{target_dir}/{label}'
         if not os.path.exists(target_label_dir):
