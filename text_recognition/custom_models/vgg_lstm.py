@@ -2,6 +2,9 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+import itertools
+
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Input, Model, callbacks
@@ -51,6 +54,20 @@ class VGGLSTM:
             labels, y_pred, input_length, label_length)
 
     def build_model(self, training: bool):
+    def decode_label(self, out):
+        # out : (1, 32, 42)
+        # get max index -> len = 32
+        out_best = list(np.argmax(out[0, 2:], axis=1))
+
+        # remove overlap value
+        out_best = [k for k, g in itertools.groupby(out_best)]
+
+        outstr = ''
+        for i in out_best:
+            if i < len(self.letters):
+                outstr += self.letters[i]
+
+        return outstr
 
         # Input layer
         inputs = Input(name='inputs', shape=self.input_shape_hwc, 
