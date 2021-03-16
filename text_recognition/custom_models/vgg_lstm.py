@@ -53,7 +53,6 @@ class VGGLSTM:
         return tf.keras.backend.ctc_batch_cost(
             labels, y_pred, input_length, label_length)
 
-    def build_model(self, training: bool):
     def decode_label(self, out):
         # out : (1, 32, 42)
         # get max index -> len = 32
@@ -68,6 +67,8 @@ class VGGLSTM:
                 outstr += self.letters[i]
 
         return outstr
+
+    def build_model(self):
 
         # Input layer
         inputs = Input(name='inputs', shape=self.input_shape_hwc, 
