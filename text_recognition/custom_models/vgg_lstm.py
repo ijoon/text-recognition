@@ -177,9 +177,6 @@ class VGGLSTM:
     def predict(self):
         pass
 
-    def get_text_result(self, img) -> str:
-        pass
-    
     def predict_text_from_image(self, image) -> str:
         output = self.predict_model.predict(image)
         output_text = self.decode_label(output)
@@ -200,8 +197,8 @@ class VGGLSTM:
 
         train_ds, valid_ds = du.split_train_valid_for_tf_dataset(
             total_ds, 
-            valid_ratio=0.2, 
-            shuffle=True, 
+            valid_ratio=0.2,
+            shuffle=True,
             cache=True)
         
         train_ds = (
