@@ -250,6 +250,9 @@ class VGGLSTM:
                 
 
 if __name__ == '__main__':
+
+    # train / predict sample code
+
     vgg_lstm = VGGLSTM(
         input_shape_hwc=(cfg['img_h'], cfg['img_w'], cfg['channel']),
         class_num=cfg['class_num'],
@@ -257,7 +260,31 @@ if __name__ == '__main__':
         letters=cfg['char_vector'],
         dataset_dir=cfg['dataset_dir'],
         batch_size=cfg['train_batch_size'],
-        downsample_factor=cfg['downsample_factor'])
-        
+        downsample_factor=cfg['downsample_factor'],
+        saved_model_path='' #cfg['saved_model_path']
+    )
+
+    # train
     vgg_lstm.train()
 
+    # # predict image
+    # image_path = 'test_image/35_1.png'
+    # org_image = tf.io.decode_image(tf.io.read_file(image_path),
+    #     channels=3,
+    #     expand_animations=False)
+
+    # # return dtype => tf.float32
+    # image = tf.image.resize(org_image, (64, 128))
+
+    # # image = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
+
+    # image /= 255.
+    # image = tf.expand_dims(image, axis=0)
+
+    # output = vgg_lstm.predict_text_from_image(image)
+
+    # print(output)
+
+    # imgplot = plt.imshow(image[0])
+    # plt.show()
+    
