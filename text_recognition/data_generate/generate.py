@@ -1,3 +1,5 @@
+from collections import defaultdict
+import random
 import os
 
 import cv2
@@ -89,16 +91,15 @@ def combinate_chars(unit_chars: dict,
                     align_left=True):
     units = list(unit_chars.keys())
     imgs = []
-    random_seq_len = np.random.randint(seq_length, seq_length+1)
     label = ""
-    for rnd_pick in np.random.randint(0, len(units), random_seq_len):
-        img = np.array(unit_chars[units[rnd_pick]][0])
+    for rnd_pick in np.random.randint(0, len(units), seq_length):
+        img = random.choice(unit_chars[units[rnd_pick]])
         img = fit_to_size(img, unit_size)
         imgs.append(img)
         label += units[rnd_pick]
     if not align_left:
         label = label[::-1]
-    img = stitch_chars(imgs, (unit_size[0] * random_seq_len, unit_size[1]), align_left)
+    img = stitch_chars(imgs, (unit_size[0] * seq_length, unit_size[1]), align_left)
     return img, label
 
 def augment_background(img, bg_img, unit_size, min_length):
@@ -118,43 +119,90 @@ def augment_background(img, bg_img, unit_size, min_length):
     m_top = np.random.randint(0, crop_h-rows) if scale != 1.0 else 0
     m_left = np.random.randint(0, crop_w-cols) if scale != 1.0 else 0
     crop_bg[m_top:m_top+rows, m_left:m_left+cols, :] = img[:, :, :]
-    return crop_bg
+    return crop_bg 
 
-if __name__ == "__main__":
-    path = 'base_data'
-    unit_files = {}
-    for dir_name in os.listdir(path):
-        if dir_name not in TARGET_CHARS:
+def generate_multi_digit_imgs(base_data_dir,
+                              bg_data_dir,
+                              min_length,
+                              max_length,
+                              unit_img_size_wh,
+                              data_size,
+                              target_dir):
+
+    # get unit imgs
+    unit_img_dict = {}
+    for unit_dir in os.listdir(base_data_dir):
+        if unit_dir not in TARGET_CHARS:
             continue
 
-        if not os.path.isdir(os.path.join(path, dir_name)):
+        if not os.path.isdir(os.path.join(base_data_dir, unit_dir)):
             continue
 
-        unit_files[dir_name] = []
-        for unit_file in os.listdir(os.path.join(path, dir_name)):
-            if '.jpg' not in unit_file:
+        unit_img_dict[unit_dir] = []
+        for unit_file in os.listdir(os.path.join(base_data_dir, unit_dir)):
+            if not unit_file.lower().endswith(('.jpeg', '.jpg', '.png')):
                 continue
-            img = cv2.imread(os.path.join(path, dir_name, unit_file))
-            unit_files[dir_name].append(img)
 
-    print('# of unit = {}'.format(len(unit_files)))
-    bg_img = cv2.imread('background.jpg')
+            img = cv2.imread(os.path.join(base_data_dir, unit_dir, unit_file))
+            unit_img_dict[unit_dir].append(img)
 
-    for n in range(5000):
-        align = np.random.randint(0, 2)
-        seq_img, label = combinate_chars(unit_files, (32, 64), 3, align)
-        seq_img = augment_background(seq_img, bg_img, (32, 64), 3)
-        print(label)
+    # get bg imgs
+    bg_imgs = []
+    for bg_file in os.listdir(bg_data_dir):
+        if not bg_file.lower().endswith(('.jpeg', '.jpg', '.png')):
+            continue
+
+        img = cv2.imread(os.path.join(bg_data_dir, bg_file))
+        bg_imgs.append(img)
+
+    # prob for random seq length 
+    length_list = list(range(min_length, max_length+1))
+    p = [pow(10,l) for l in length_list]
+    sum_p = sum(p)
+    p = [a / sum_p for a in p]
+
+    # generate random seq
+    for _ in range(data_size):
+        seq_length = np.random.choice(length_list, p=p)
+        seq_img, label = combinate_chars(
+            unit_chars=unit_img_dict,
+            unit_size=unit_img_size_wh,
+            seq_length=seq_length,
+            align_left=random.choice([True, False]))
+
+        seq_img = augment_background(
+            img=seq_img, 
+            bg_img=random.choice(bg_imgs),
+            unit_size=unit_img_size_wh,
+            min_length=seq_length)
+
         seq_img = shear_img_randomly(seq_img)
-        # cv2.imshow('img', seq_img)
-        # cv2.waitKey()
-
-        target_folder = f'results/{label}'
-        if not os.path.exists(target_folder):
-            os.makedirs(target_folder)
+                        
+        target_label_dir= f'{target_dir}/{label}'
+        if not os.path.exists(target_label_dir):
+            os.makedirs(target_label_dir)
             count = 0
         else:
-            count = len([f for f in os.listdir(target_folder) if '.jpg' in f])
+            count = len([f for f in os.listdir(target_label_dir) if '.jpg' in f])
+
+        cv2.imwrite(f'{target_label_dir}/{label}_{count}.jpg', seq_img)
 
 
-        cv2.imwrite(f'{target_folder}/{label}_{count}.jpg', seq_img)
+if __name__ == "__main__":
+
+    # img_path = '/Users/rudy/Desktop/test.png'
+    # img = cv2.imread(img_path)
+    # cv2.imshow('test1', img)
+    # fit_img = fit_to_size(img, (32,64))
+    # cv2.imshow('test2', fit_img)
+    # cv2.waitKey()
+
+    generate_multi_digit_imgs(
+        base_data_dir='data_generate/base_data',
+        bg_data_dir='data_generate/bg_data',
+        min_length=1,
+        max_length=5,
+        unit_img_size_wh=(32, 64),
+        data_size=10000,
+        target_dir='data_generate/result'
+    )
