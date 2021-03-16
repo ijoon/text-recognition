@@ -36,4 +36,4 @@ model.fit_generator(generator=tiger_train.next_batch(),
                     epochs=30,
                     callbacks=[checkpoint],
                     validation_data=tiger_val.next_batch(),
-                    validation_steps=int(tiger_val.n / val_batch_size))
+                    validation_steps=int(tiger_val .n / val_batch_size))
