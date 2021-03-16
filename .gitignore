@@ -1,6 +1,9 @@
 # user define
 .DS_Store
 .vscode
+*/data_generate/generated_imgs/
+test_image/
+*/custom_models/weights/
 
 
 # Byte-compiled / optimized / DLL files
