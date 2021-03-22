@@ -219,10 +219,14 @@ def generate_multi_digit_imgs(base_data_dir,
         bg_imgs.append(img)
 
     # prob for random seq length 
+    # length_list = list(range(min_length, max_length+1))
+    # p = [pow(10,l) for l in length_list]
+    # sum_p = sum(p)
+    # p = [a / sum_p for a in p]
+
     length_list = list(range(min_length, max_length+1))
-    p = [pow(10,l) for l in length_list]
-    sum_p = sum(p)
-    p = [a / sum_p for a in p]
+    sum_length_list = sum(length_list)
+    p = [a / sum_length_list for a in length_list]
 
     # generate random seq
     for _ in range(data_size):
