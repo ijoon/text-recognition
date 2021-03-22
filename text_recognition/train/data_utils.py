@@ -14,7 +14,6 @@ def text_to_labels(letters, text) -> list:
 
 def get_image_paths_and_string_labels(directory,
                                       letters,
-                                      label_length,
                                       allow_image_formats=('.jpeg', '.jpg')):
 
     """ Get image paths and string labels in a directory.
@@ -32,7 +31,6 @@ def get_image_paths_and_string_labels(directory,
     Args:
         directory: Directory where the data is located.
         allow_image_formats: Allow list of file extensions. (e.g. '.jpg').
-        label_length: String label length (e.g. 5 => return '123  ')
 
     Returns: 
         (image_paths, labels)
@@ -51,12 +49,7 @@ def get_image_paths_and_string_labels(directory,
         for file_name in files:
             if file_name.lower().endswith(allow_image_formats):
                 label = os.path.basename(path)
-
-                if not label_length:
-                    labels.append(label)
-
-                labels.append(
-                    text_to_labels(letters, label.ljust(label_length)))
+                labels.append(text_to_labels(letters, label))
                 image_paths.append(os.path.join(path, file_name))
 
     return image_paths, labels

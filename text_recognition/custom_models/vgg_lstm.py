@@ -187,8 +187,7 @@ class VGGLSTM:
         image_paths, labels = du.get_image_paths_and_string_labels(
             directory=self.dataset_dir,
             allow_image_formats=('.jpeg', '.jpg'),
-            letters=self.letters,
-            label_length=self.max_text_len)
+            letters=self.letters)
 
         total_ds = du.get_tf_dataset_for_images_and_string_labels(
             image_paths=image_paths, 
