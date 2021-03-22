@@ -203,13 +203,6 @@ class VGGLSTM:
         
         train_ds = (
             train_ds
-            .map(
-                lambda image, label: du._map_preprocess_data(
-                    image=image, 
-                    label=label, 
-                    augmentation=True, 
-                    normalization=True),
-                num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .shuffle(train_ds.cardinality().numpy())
             .batch(self.batch_size, drop_remainder=True)
             .map(
@@ -219,20 +212,15 @@ class VGGLSTM:
                     image_w=self.input_shape_hwc[1],
                     downsample_factor=self.downsample_factor,
                     batch_size=self.batch_size,
-                    text_length=self.max_text_len),
+                    text_length=self.max_text_len,
+                    augmentation=True,
+                    normalization=True),
                 num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .prefetch(tf.data.experimental.AUTOTUNE)
         )
 
         valid_ds = (
             valid_ds
-            .map(
-                lambda image, label: du._map_preprocess_data(
-                    image=image, 
-                    label=label, 
-                    augmentation=False, 
-                    normalization=True),
-                num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .batch(self.batch_size, drop_remainder=True)
             .map(
                 lambda images, labels: du._map_batch_for_ctc_loss(
@@ -241,11 +229,22 @@ class VGGLSTM:
                     image_w=self.input_shape_hwc[1],
                     downsample_factor=self.downsample_factor,
                     batch_size=self.batch_size,
-                    text_length=self.max_text_len),
+                    text_length=self.max_text_len,
+                    augmentation=False,
+                    normalization=True),
                 num_parallel_calls=tf.data.experimental.AUTOTUNE)
             .prefetch(tf.data.experimental.AUTOTUNE)
         )
 
+        # test code
+
+        # for input_dict, output_dict in train_ds:
+        #     for img in input_dict['inputs']:
+        #         print(img)
+        #         plt.imshow(img)
+        #         plt.show()
+
+        # assert False
         return train_ds, valid_ds
                 
 

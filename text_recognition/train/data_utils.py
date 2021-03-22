@@ -189,8 +189,18 @@ def _map_preprocess_data(image, label, augmentation=False, normalization=True):
     return image, label
 
 
+
 def _map_batch_for_ctc_loss(images, labels, image_w, downsample_factor, 
-                            batch_size, text_length):
+                            batch_size, text_length, 
+                            augmentation, normalization):
+
+    if augmentation:
+        images = tf.map_fn(fn=tf_random_augment_image, elems=images,
+            parallel_iterations=batch_size)
+
+    if normalization:
+        images = normalize_image(images)
+
 
     input_length = tf.ones((batch_size, 1)) * (image_w//downsample_factor - 2)
     label_length = tf.ones((batch_size, 1)) * text_length 
