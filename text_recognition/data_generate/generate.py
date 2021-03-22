@@ -143,6 +143,10 @@ def generate_multi_digit_imgs(base_data_dir,
             if not unit_file.lower().endswith(('.jpeg', '.jpg', '.png')):
                 continue
 
+            # Some mac file names start with '._'
+            if unit_file.lower().startswith(('._')):
+                continue
+
             img = cv2.imread(os.path.join(base_data_dir, unit_dir, unit_file))
             unit_img_dict[unit_dir].append(img)
 
@@ -150,6 +154,10 @@ def generate_multi_digit_imgs(base_data_dir,
     bg_imgs = []
     for bg_file in os.listdir(bg_data_dir):
         if not bg_file.lower().endswith(('.jpeg', '.jpg', '.png')):
+            continue
+
+        # Some mac file names start with '._'
+        if bg_file.lower().startswith(('._')):
             continue
 
         img = cv2.imread(os.path.join(bg_data_dir, bg_file))
