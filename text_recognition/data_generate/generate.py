@@ -58,6 +58,7 @@ def shear_img_randomly(img):
 def stitch_chars(imgs, canvas_size, align_left=True):
     canvas_size = [canvas_size[1], canvas_size[0], 3]
     canvas = np.zeros(canvas_size, dtype=np.uint8)
+
     loc = 0 if align_left else canvas_size[1]
     for im in imgs:
         if align_left:
@@ -66,7 +67,9 @@ def stitch_chars(imgs, canvas_size, align_left=True):
         else:
             canvas[:, loc-im.shape[1]:loc, :] = im
             loc -= im.shape[1]
+
     return canvas
+
 
 def fit_to_size(img, size):
     """
@@ -86,26 +89,28 @@ def fit_to_size(img, size):
     return canvas
 
 def combinate_chars(unit_chars: dict,
-                    unit_size: set or list,
+                    unit_size_wh: set or list,
                     seq_length: int,
                     align_left=True):
     units = list(unit_chars.keys())
     imgs = []
-    label = ""
+    label = ''
     for rnd_pick in np.random.randint(0, len(units), seq_length):
         img = random.choice(unit_chars[units[rnd_pick]])
-        img = fit_to_size(img, unit_size)
+        img = fit_to_size(img, unit_size_wh)
         imgs.append(img)
         label += units[rnd_pick]
     if not align_left:
         label = label[::-1]
-    img = stitch_chars(imgs, (unit_size[0] * seq_length, unit_size[1]), align_left)
+    img = stitch_chars(imgs, (unit_size_wh[0] * seq_length, unit_size_wh[1]), 
+        align_left)
+
     return img, label
 
-def augment_background(img, bg_img, unit_size, min_length):
+def augment_background(img, bg_img, unit_size_wh, max_length):
     scale = np.random.rand() / 2 + 0.5
     rows, cols = img.shape[:2]
-    bg_cols = unit_size[0] * min_length
+    bg_cols = unit_size_wh[0] * max_length
     range_x = bg_img.shape[1] - bg_cols
     range_y = bg_img.shape[0] - rows
     crop_x = np.random.randint(0, range_x)
@@ -119,7 +124,57 @@ def augment_background(img, bg_img, unit_size, min_length):
     m_top = np.random.randint(0, crop_h-rows) if scale != 1.0 else 0
     m_left = np.random.randint(0, crop_w-cols) if scale != 1.0 else 0
     crop_bg[m_top:m_top+rows, m_left:m_left+cols, :] = img[:, :, :]
-    return crop_bg 
+    return crop_bg
+
+
+def augment_background2(seq_img, 
+                        label, 
+                        bg_img, 
+                        unit_size_wh, 
+                        max_length, 
+                        blank_left):
+    """
+    1. max_length만큼 background 영역 crop (random margin)
+    2. blank left를 통해 seq_img를 왼쪽으로 붙일지 오른쪽으로 붙일지 결정 (label도 변경)
+    3. 결과 image, label 리턴
+    """
+
+    bg_w = unit_size_wh[0] * max_length
+    bg_h = unit_size_wh[1]
+    
+    l_margin = round(bg_w * random.uniform(0.0, 0.1))
+    r_margin = round(bg_w * random.uniform(0.0, 0.1))
+    t_margin = round(bg_h * random.uniform(0.0, 0.1))
+    b_margin = round(bg_h * random.uniform(0.0, 0.1))
+
+    total_bg_w = round(bg_w + l_margin + r_margin)
+    total_bg_h = round(bg_h + t_margin + b_margin)
+
+    if bg_img.shape[1] < total_bg_w or bg_img.shape[0] < total_bg_h:
+        raise ValueError('Background image is too small.')
+
+    bg_start_w = random.randint(0, bg_img.shape[1] - total_bg_w)
+    bg_start_h = random.randint(0, bg_img.shape[0] - total_bg_h)
+
+    crop_bg = bg_img[bg_start_h:bg_start_h+total_bg_h,
+                     bg_start_w:bg_start_w+total_bg_w, :].copy()
+
+    seq_h = seq_img.shape[0]
+    seq_w = seq_img.shape[1]
+    if blank_left:
+        crop_h = crop_bg.shape[0]
+        crop_w = crop_bg.shape[1]
+        crop_bg[crop_h-b_margin-seq_h:crop_h-b_margin,
+                crop_w-r_margin-seq_w:crop_w-r_margin, :] = seq_img[:,:,:]
+
+        label = label.rjust(max_length)
+    else:
+        crop_bg[t_margin:t_margin+seq_h, 
+                l_margin:l_margin+seq_w, :] = seq_img[:,:,:]
+        label = label.ljust(max_length)
+        
+    return crop_bg, label
+    
 
 def generate_multi_digit_imgs(base_data_dir,
                               bg_data_dir,
@@ -174,24 +229,25 @@ def generate_multi_digit_imgs(base_data_dir,
         seq_length = np.random.choice(length_list, p=p)
         seq_img, label = combinate_chars(
             unit_chars=unit_img_dict,
-            unit_size=unit_img_size_wh,
+            unit_size_wh=unit_img_size_wh,
             seq_length=seq_length,
             align_left=random.choice([True, False]))
 
-        seq_img = augment_background(
-            img=seq_img, 
+        seq_img, label = augment_background2(
+            seq_img=seq_img, 
+            label=label, 
             bg_img=random.choice(bg_imgs),
-            unit_size=unit_img_size_wh,
-            min_length=seq_length)
+            unit_size_wh=unit_img_size_wh,
+            max_length=max_length,
+            blank_left=random.choice([True, False]))
 
-        # seq_img = shear_img_randomly(seq_img)
-                        
         target_label_dir= f'{target_dir}/{label}'
         if not os.path.exists(target_label_dir):
             os.makedirs(target_label_dir)
             count = 0
         else:
-            count = len([f for f in os.listdir(target_label_dir) if '.jpg' in f])
+            count = len(
+                [f for f in os.listdir(target_label_dir) if '.jpg' in f])
 
         cv2.imwrite(f'{target_label_dir}/{label}_{count}.jpg', seq_img)
 
