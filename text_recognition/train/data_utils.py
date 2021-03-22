@@ -115,11 +115,11 @@ def split_train_valid(x, y, valid_ratio=0.2, shuffle=True):
         random_state=1,
         shuffle=True)
 
-
+@tf.function
 def tf_random_condition():
     return tf.random.uniform([], 0, 1.0, dtype=tf.float32)
 
-
+@tf.function
 def tf_blur_image(x):
     def _gfilter(x):
         return tfa.image.gaussian_filter2d(x, [5, 5], 1.0, 'REFLECT', 0)
@@ -131,14 +131,14 @@ def tf_blur_image(x):
         lambda: _gfilter(x), 
         lambda: _mfilter(x))
 
-
+@tf.function
 def tf_random_augment_image(x: tf.Tensor, p=0.2):
 
     x = tf.cond(tf_random_condition() < p, 
         lambda: tf.image.random_hue(x, 0.1), lambda: x)
 
-    x = tf.cond(tf_random_condition() < p, 
-        lambda: tf.image.random_brightness(x, 0.1), lambda: x)
+    x = tf.cond(tf_random_condition() < 1, 
+        lambda: tf.image.random_brightness(x, 0.5), lambda: x)
 
     x = tf.cond(tf_random_condition() < p, 
         lambda: tf.image.random_contrast(x, 0.9, 1.1), lambda: x)
@@ -173,12 +173,12 @@ def tf_random_augment_image(x: tf.Tensor, p=0.2):
 
     return x
 
-
+@tf.function
 def normalize_image(x: tf.Tensor):
     # Normalize images to the range [0, 1].
     return x / 255.
 
-
+@tf.function
 def _map_preprocess_data(image, label, augmentation=False, normalization=True):    
     if augmentation:
         image = tf_random_augment_image(image)
