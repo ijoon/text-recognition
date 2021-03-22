@@ -215,76 +215,15 @@ if __name__ == '__main__':
     2. 이미지 로드
     3. split / valid 나누기 (cache)
     4. epoch마다 
-        train_ds => augmentation, normalize, shuffle
-        valid_ds => normalize
-    5. 배치, ctc_loss
+        train_ds => shuffle
+    5. 배치, preprocess, ctc_loss
     6. prefetch
 
     """
     
     image_paths, labels = get_image_paths_and_string_labels(
-        directory='data_generate/results',
+        directory='data_generate/generated_imgs',
         allow_image_formats=('.jpeg', '.jpg'),
         letters='0123456789-. ',
         label_length=5)
-
-    total_ds = get_tf_dataset_for_images_and_string_labels(
-        image_paths=image_paths, 
-        labels=labels, 
-        image_size_hw=(64,128))
-
-    train_ds, valid_ds = split_train_valid_for_tf_dataset(
-        total_ds, 
-        valid_ratio=0.2, 
-        shuffle=True, 
-        cache=True)
-    
-    train_ds = (
-        train_ds
-        .map(
-            lambda image, label: _map_preprocess_data(
-                image=image, 
-                label=label, 
-                augmentation=True, 
-                normalization=True),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        .shuffle(train_ds.cardinality().numpy())
-        .batch(32)
-        .map(
-            lambda images, labels: _map_batch_for_ctc_loss(
-                images=images,
-                labels=labels,
-                image_w=128,
-                downsample_factor=4,
-                batch_size=32,
-                text_length=5),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        .prefetch(tf.data.experimental.AUTOTUNE)
-    )
-
-    valid_ds = (
-        valid_ds
-        .map(
-            lambda image, label: _map_preprocess_data(
-                image=image, 
-                label=label, 
-                augmentation=False, 
-                normalization=True),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        .batch(32)
-        .map(
-            lambda images, labels: _map_batch_for_ctc_loss(
-                images=images,
-                labels=labels,
-                image_w=128,
-                downsample_factor=4,
-                batch_size=32,
-                text_length=5),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        .prefetch(tf.data.experimental.AUTOTUNE)
-    )
-
-    for input_dict, output_dict in train_ds:
-        print(input_dict['inputs'][0].shape)
-        input()
         
