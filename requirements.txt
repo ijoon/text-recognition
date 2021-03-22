@@ -1,7 +1,9 @@
-tensorflow==1.5.0
-keras==2.1.3
-opencv-python==3.4.2.17
+tensorflow==2.4.1
+tensorflow-addons
+opencv-python
 numpy
 matplotlib
 h5py
 scipy
+Pillow
+scikit-learn
