@@ -1,10 +1,14 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 from collections import defaultdict
 import random
-import os
 
 import cv2
 import numpy as np
 
+from config import cfg
 
 TARGET_CHARS = '0123456789'
 
@@ -256,7 +260,7 @@ def generate_multi_digit_imgs(base_data_dir,
         cv2.imwrite(f'{target_label_dir}/{label}_{count}.jpg', seq_img)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     # img_path = '/Users/rudy/Desktop/test.png'
     # img = cv2.imread(img_path)
@@ -269,8 +273,8 @@ if __name__ == "__main__":
         base_data_dir='data_generate/base_data',
         bg_data_dir='data_generate/bg_data',
         min_length=1,
-        max_length=5,
+        max_length=cfg['max_text_len'],
         unit_img_size_wh=(32, 64),
-        data_size=10000,
+        data_size=1000,
         target_dir='data_generate/generated_imgs'
     )
